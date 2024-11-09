@@ -1,37 +1,32 @@
-#----------------------------------
-# Stage 1
-#----------------------------------
+#-----------------Stage-1------------------------
+FROM maven:3.8.3-openjdk-17 AS builder
 
-# Import docker image with maven installed
-FROM maven:3.8.3-openjdk-17 as builder 
 
-# Add maintainer, so that new user will understand who had written this Dockerfile
-MAINTAINER Madhup Pandey<madhuppandey2908@gmail.com>
+WORKDIR /app
 
-# Add labels to the image to filter out if we have multiple application running
-LABEL app=bankapp
+COPY . /app
+RUN mvn dependency:go-offline -B
 
-# Set working directory
-WORKDIR /src
 
-# Copy source code from local to container
-COPY . /src
+RUN mvn clean install -DskipTests=True
 
-# Build application and skip test cases
-RUN mvn clean install -DskipTests=true
 
-#--------------------------------------
-# Stage 2
-#--------------------------------------
 
-# Import small size java image
-FROM openjdk:17-alpine as deployer
+################# Stage-2 ######################
 
-# Copy build from stage 1 (builder)
-COPY --from=builder /src/target/*.jar /src/target/bankapp.jar
 
-# Expose application port 
+FROM openjdk:17-alpine
+
+
+WORKDIR /app
+
+
+COPY --from=builder /app/target/*.jar /app/target/bankapp.jar
+
+
 EXPOSE 8080
 
-# Start the application
-ENTRYPOINT ["java", "-jar", "/src/target/bankapp.jar"]
+
+CMD ["java","-jar","/app/target/bankapp.jar"]
+
+
