@@ -1,1 +1,60 @@
+pipeline {
+    agent { label 'Banking-app' }
+
+    stages {
+        stage('Environment Clean') {
+            steps {
+                // Cleans the workspace at the start of the pipeline run
+                cleanWs()
+            }
+        }
+        stage('Code Clone') {
+            steps {
+                // Cloning the specific branch of the repository
+                git branch: 'DevOps', url: 'https://github.com/shiv292222/Banking-App.git'
+            }
+        }
+        stage('Build') {
+            steps {
+                script {
+                    try {
+                        // Building Docker image from the Dockerfile in the current directory
+                        sh 'docker build -t bank-app:latest .'
+                    } catch (Exception e) {
+                        echo "Error while building the image: ${e.getMessage()}"
+                        // Optionally add a step to handle failures (e.g., send notification)
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script {
+                    try {
+                        // Taking down any existing containers and then redeploying with Docker Compose
+                        sh 'docker compose down && docker compose up -d --build'
+                    } catch (Exception e) {
+                        echo "Deployment failed: ${e.getMessage()}"
+                        // Optionally add a step to handle deployment failures
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            // Cleans the workspace after the pipeline execution to ensure a clean state for future builds
+            echo 'Cleaning up workspace...'
+            cleanWs()
+        }
+        success {
+            echo "Build was successful"
+            // Additional actions upon success, e.g., notifications or further deployments
+        }
+        failure {
+            echo "Build failed"
+            // Actions to take on build failure, e.g., notifications or error handling steps
+        }
+    }
+}
 
