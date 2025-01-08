@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: bankapp
+  name: bankapp-deployment
+  namespace: bankapp-namespace
+spec:
+  replicas: 2  # Replicas for high availability
+  selector:
+    matchLabels:
+      app: bankapp
+  template:
+    metadata:
+      labels:
+        app: bankapp
+    spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: busybox:1.28
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for MySQL to be ready...";
+              for i in {1..60}; do
+                nc -z mysql-0.mysql-headless 3306 && echo "MySQL is ready!" && exit 0;
+                echo "MySQL not ready, retrying in 2 seconds...";
+                sleep 2;
+              done;
+              echo "MySQL did not become ready after 120 seconds.";
+              exit 1;
+      containers:
+        - name: bankapp1
+          image: trainwithshubham/springboot-bankapp:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: bankapp-config
+                  key: MYSQL_DATABASE
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: bankapp-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: bankapp-config
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
