@@ -64,3 +64,17 @@ spec:
         resources:
           requests:
             storage: 5Gi
+
+
+   # volumeClaimTemplates:
+   #  - metadata:
+   #      name: mysql-data
+   #    spec:
+   #      accessModes:
+   #        - ReadWriteOnce
+   #      storageClassName: local-path  # 👈 Your dynamic storage class!
+   #      resources:
+   #        requests:
+   #          storage: 5Gi
+
+    
